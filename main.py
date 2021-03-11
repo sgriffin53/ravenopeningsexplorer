@@ -20,6 +20,8 @@ global lastvalidhtml
 global movesstring
 global fullmovelist
 global fullmovelist_index
+global highlightbookmoves
+highlightbookmoves = 1
 fullmovelist_index = 0
 lastvalidhtml = ""
 movestack = []
@@ -44,7 +46,21 @@ class TkFrame(Frame):
         self.pack(fill=BOTH, expand=YES)
 
 
-
+def drawcoords():
+    global board
+    global boardCanvas
+    global canvasSize
+    global squareSize
+    #boardCanvas.create_text(12,10,fill="darkblue",font="Verdana 10 bold",text="8")
+    for i in range(1,9):
+        ypos = 10 + (i - 1) * squareSize
+        boardCanvas.create_text(12,ypos,fill="darkblue",font="Verdana 10 bold",text=str(9 - i))
+    for i in range(1,9):
+        xpos = 12 + (i - 1) * squareSize + squareSize - 22
+        letter = chr(97 + (i - 1))
+        boardCanvas.create_text(xpos,canvasSize - 12,fill="darkblue",font="Verdana 10 bold",text=letter)
+    boardCanvas.update()
+    
 def updatehtml():
     global movestack
     global lastvalidhtml
@@ -76,7 +92,10 @@ def updatehtml():
         f = open(filedir, "r", encoding="utf-8")
         html = f.read()
         f.close()
+        page = filedir.replace("chessopeningtheory", "").replace("/index.html","")
         html = html.replace("<a href=\"/wiki/", "<a href=\"https://en.wikibooks.org/wiki/")
+        html = html.replace("href=\"/w/", "href=\"https://en.wikibooks.org/wiki/")
+        html = html.replace("href=\"#", "href=\"https://en.wikibooks.org/wiki/Chess_Opening_Theory" + page + "#")
         newhtml = ""
         allowwrite = 0
         headerstring = "<div id=\"mw-content-text\" lang=\"en\" dir=\"ltr\" class=\"mw-content-ltr\"><div class=\"mw-parser-output\"><div class=\"tright\" style=\"clear: right; width: 260px; text-align:center\">"
@@ -131,6 +150,7 @@ def updatehtml():
             if "<td>" in line and "</td>" in line and line[4] >= 'a' and line[4] <= 'h': ignoreline = True
             if "<td>" in line and "</td>" in line and line[4] >= '1' and line[4] <= '8': ignoreline = True
             if "id=\"References\">References<" in line: allowwrite = 0
+            if "<div id=\"mw-navigation\">" in line: allowwrite = 0
             if allowwrite and not ignoreline: newhtml += line + "\n"
     else:
         pass
@@ -174,6 +194,9 @@ def highlightPieces():
     global canvasSize
     global app
     global squareSize
+    global highlightbookmoves
+    
+    if not highlightbookmoves: return
     n = 0
     i = 0
     for move in board.legal_moves:
@@ -234,19 +257,19 @@ def drawPieces():
         
         pieceFile = ''
 
-        if (piece == 'R'): pieceFile = 'pieces\WR.png'  #white rook
-        if (piece == 'N'): pieceFile = 'pieces\WN.png'  #white knight
-        if (piece == 'B'): pieceFile = 'pieces\WB.png'  #white bishop
-        if (piece == 'Q'): pieceFile = 'pieces\WQ.png'  #white queen
-        if (piece == 'K'): pieceFile = 'pieces\WK.png'  #white king
-        if (piece == 'P'): pieceFile = 'pieces\WP.png'  #white pawn
+        if (piece == 'R'): pieceFile = 'pieces/WR.png'  #white rook
+        if (piece == 'N'): pieceFile = 'pieces/WN.png'  #white knight
+        if (piece == 'B'): pieceFile = 'pieces/WB.png'  #white bishop
+        if (piece == 'Q'): pieceFile = 'pieces/WQ.png'  #white queen
+        if (piece == 'K'): pieceFile = 'pieces/WK.png'  #white king
+        if (piece == 'P'): pieceFile = 'pieces/WP.png'  #white pawn
 
-        if (piece == 'r'): pieceFile = 'pieces\BR.png'  #black rook
-        if (piece == 'n'): pieceFile = 'pieces\BN.png'  #black knight
-        if (piece == 'b'): pieceFile = 'pieces\BB.png'  #black bishop
-        if (piece == 'q'): pieceFile = 'pieces\BQ.png'  #black queen
-        if (piece == 'k'): pieceFile = 'pieces\BK.png'  #black king
-        if (piece == 'p'): pieceFile = 'pieces\BP.png'  #black pawn
+        if (piece == 'r'): pieceFile = 'pieces/BR.png'  #black rook
+        if (piece == 'n'): pieceFile = 'pieces/BN.png'  #black knight
+        if (piece == 'b'): pieceFile = 'pieces/BB.png'  #black bishop
+        if (piece == 'q'): pieceFile = 'pieces/BQ.png'  #black queen
+        if (piece == 'k'): pieceFile = 'pieces/BK.png'  #black king
+        if (piece == 'p'): pieceFile = 'pieces/BP.png'  #black pawn
         
         if (pieceFile != ''):
             img = Image.open(pieceFile)
@@ -266,7 +289,7 @@ def appresize(event):
     global boardImg
     global my_html_label
     global button_startpos, button_back, button_forward, button_end
-
+    global checkbutton_highlight
     boardCanvas.pack(expand=YES)
     #boardCanvas.config(width=30, height=30,bg="black")
     #boardCanvas.pack(expand=NO)
@@ -295,9 +318,11 @@ def appresize(event):
     button_back.place(x=w+buttonwidth,y=appheight - 30, w=buttonwidth,h=29)
     button_forward.place(x=w+buttonwidth * 2, y = appheight - 30, w=buttonwidth, h=29)
     button_end.place(x=w+ buttonwidth * 3, y = appheight - 30, w = buttonwidth, h = 29)
+    checkbutton_highlight.place(x=w - 170, y = h + 1, w = 170, h = 20)
     drawBoard()
     drawPieces()
     highlightPieces()
+    drawcoords()
     root.update()
     
 def drawBoard():
@@ -310,8 +335,8 @@ def drawBoard():
     global scalew, scaleh
     count = 0
     board = ''
-    #img = Image.Open(file='board.PNG')
-    img = Image.open("board.PNG")
+    #img = Image.Open(file='board.png')
+    img = Image.open("board.png")
     if (canvasSize > 0): img = img.resize((canvasSize, canvasSize),Image.ANTIALIAS)
     boardImg = ImageTk.PhotoImage(img)
     #boardImg.config(file='board.PNG')
@@ -564,7 +589,6 @@ def canvasRelease(event):
             
         fullmovelist.append(move)
         fullmovelist_index += 1
-        print(fullmovelist)
         board.push(move)
         if (board.turn): gameStateVar.set("White to move.")
         else: gameStateVar.set("Black to move.")
@@ -574,6 +598,7 @@ def canvasRelease(event):
     drawBoard()
     drawPieces()
     highlightPieces()
+    drawcoords()
     root.update()
     legalmoves = board.legal_moves
     count = 0
@@ -712,19 +737,19 @@ def redrawTile(x, y):
     #redraw piece
     piece = str(board.piece_at(boardIndex))
     pieceFile = ''
-    if (piece == 'R'): pieceFile = 'pieces\WR.png'  #white rook
-    if (piece == 'N'): pieceFile = 'pieces\WN.png'  #white knight
-    if (piece == 'B'): pieceFile = 'pieces\WB.png'  #white bishop
-    if (piece == 'Q'): pieceFile = 'pieces\WQ.png'  #white queen
-    if (piece == 'K'): pieceFile = 'pieces\WK.png'  #white king
-    if (piece == 'P'): pieceFile = 'pieces\WP.png'  #white pawn
+    if (piece == 'R'): pieceFile = 'pieces/WR.png'  #white rook
+    if (piece == 'N'): pieceFile = 'pieces/WN.png'  #white knight
+    if (piece == 'B'): pieceFile = 'pieces/WB.png'  #white bishop
+    if (piece == 'Q'): pieceFile = 'pieces/WQ.png'  #white queen
+    if (piece == 'K'): pieceFile = 'pieces/WK.png'  #white king
+    if (piece == 'P'): pieceFile = 'pieces/WP.png'  #white pawn
 
-    if (piece == 'r'): pieceFile = 'pieces\BR.png'  #black rook
-    if (piece == 'n'): pieceFile = 'pieces\BN.png'  #black knight
-    if (piece == 'b'): pieceFile = 'pieces\BB.png'  #black bishop
-    if (piece == 'q'): pieceFile = 'pieces\BQ.png'  #black queen
-    if (piece == 'k'): pieceFile = 'pieces\BK.png'  #black king
-    if (piece == 'p'): pieceFile = 'pieces\BP.png'  #black pawn
+    if (piece == 'r'): pieceFile = 'pieces/BR.png'  #black rook
+    if (piece == 'n'): pieceFile = 'pieces/BN.png'  #black knight
+    if (piece == 'b'): pieceFile = 'pieces/BB.png'  #black bishop
+    if (piece == 'q'): pieceFile = 'pieces/BQ.png'  #black queen
+    if (piece == 'k'): pieceFile = 'pieces/BK.png'  #black king
+    if (piece == 'p'): pieceFile = 'pieces/BP.png'  #black pawn
     if (pieceFile != ''):
         #app.img[count] = ImageTk.PhotoImage(file=pieceFile)
         #boardCanvas.create_image((xpos), (ypos), image=app.img[count], anchor=NW)
@@ -751,6 +776,7 @@ def movelistBack(event):
     board.pop()
     drawBoard()
     drawPieces()
+    drawcoords()
     highlightPieces()
     updatehtml()
     root.update()
@@ -768,6 +794,7 @@ def movelistStartpos(event):
     drawBoard()
     drawPieces()
     highlightPieces()
+    drawcoords()
     updatehtml()
     root.update()
     
@@ -786,6 +813,7 @@ def movelistForward(event):
     drawBoard()
     drawPieces()
     highlightPieces()
+    drawcoords()
     updatehtml()
     root.update()
 
@@ -811,8 +839,20 @@ def movelistEnd(event):
     drawPieces()
     highlightPieces()
     updatehtml()
+    drawcoords()
     root.update()
     pass
+    
+def updatehighlight(event):
+    global checkbutton_state
+    global highlightbookmoves
+    global root
+    highlightbookmoves = not checkbutton_state.get()
+    drawBoard()
+    drawPieces()
+    highlightPieces()
+    drawcoords()
+    root.update()
     
 def main():
     global p1
@@ -832,7 +872,9 @@ def main():
     global gameinprogerss
     global my_html_label
     global button_startpos, button_back, button_forward, button_end
+    global checkbutton_highlight
     global movestack, movestackend
+    global checkbutton_state
 
     gameinprogress = False
 
@@ -880,10 +922,14 @@ def main():
     button_forward.pack()
     button_end = Button(root, text=">>")
     button_end.pack()
+    checkbutton_state = IntVar(value=1)
+    checkbutton_highlight = Checkbutton(root, text="Highlight Book Moves", variable=checkbutton_state)
+    
     button_back.bind("<ButtonRelease-1>", movelistBack)
     button_startpos.bind("<ButtonRelease-1>", movelistStartpos)
     button_forward.bind("<ButtonRelease-1>", movelistForward)
     button_end.bind("<ButtonRelease-1>", movelistEnd)
+    checkbutton_highlight.bind("<ButtonRelease-1>", updatehighlight)
     f = open("chessopeningtheory/index.html", "r", encoding="utf-8")
     html = f.read()
     f.close()
